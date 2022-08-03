@@ -2,6 +2,25 @@ import sys
 import pyglet
 
 
+KEY_MAP = {
+   pyglet.window.key._1: 0x1,
+   pyglet.window.key._2: 0x2,
+   pyglet.window.key._3: 0x3,
+   pyglet.window.key._4: 0xc,
+   pyglet.window.key.Q: 0x4,
+   pyglet.window.key.W: 0x5,
+   pyglet.window.key.E: 0x6,
+   pyglet.window.key.R: 0xd,
+   pyglet.window.key.A: 0x7,
+   pyglet.window.key.S: 0x8,
+   pyglet.window.key.D: 0x9,
+   pyglet.window.key.F: 0xe,
+   pyglet.window.key.Z: 0xa,
+   pyglet.window.key.X: 0,
+   pyglet.window.key.C: 0xb,
+   pyglet.window.key.V: 0xf
+}
+
 class Cpu(pyglet.window.Window):
 
     # Pseudo pixel de 10x10
@@ -36,10 +55,14 @@ class Cpu(pyglet.window.Window):
     # Pilha de ponteiros
     stack = []
 
+    # Código da operção em execção
     opcode = 0
 
     # Controlador de atualização de tela
     should_draw = False
+
+    # Indica que uma tecla foi pressionada
+    key_wait = False
 
     # Fontes para interpretação
     fonts = [
@@ -98,7 +121,6 @@ class Cpu(pyglet.window.Window):
     def draw(self):
         if self.should_draw:
             self.clear()
-            line_counter = 0
             for i in range(2048):
                 if self.display_buffer[i] == 1:
                     self.sprites[i].x = (i % 64) * 10
@@ -140,6 +162,19 @@ class Cpu(pyglet.window.Window):
                 # TOCAR SOM COM O PYGLET
 
 
+    def on_key_press(self, symbol, modifiers):
+        # log("Botão apertado: ", symbol)
+        if symbol in KEY_MAP.keys():
+            self.key_inputs[KEY_MAP[symbol]] = 1
+            if self.key_wait:
+                self.key_wait = False
+            else:
+                super(Cpu, self).on_key_press(symbol, modifiers)
+
+    def on_key_release(self, symbol, modifiers):
+        # log("Botão solto: ", symbol)
+        if symbol in KEY_MAP.keys():
+            self.key_inputs[KEY_MAP[symbol]] = 0
 
     def _0XXX (self):
         # Extração do primeiro e ultimo nibble para não
@@ -219,14 +254,17 @@ class Cpu(pyglet.window.Window):
                     self.gpio[0xF] = 0
         self.should_draw = True
 
+    def _EXXE(self):
+        # Pula pra próxima instrução se a tecla em Vx está apertada
+        key = self.gpio[self.vx] & 0xF
+        if self.key_inputs[key] == 1:
+            self.pc += 2
 
-
-
-
-
-
-
-
+    def _EXX1(self):
+        # Pula pra próxima instrução se a tecla em Vx não está apertada
+        key = self.gpio[self.vx] & 0xF
+        if self.key_inputs[key] != 1:
+            self.pc += 2
 
 
 
