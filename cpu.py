@@ -115,7 +115,18 @@ class Cpu(pyglet.window.Window):
             self.memory = self.fonts[i]
 
         self.funcmap = {
-            0x0000: self._0XXX()
+            0x0000: self._0XXX(),
+            0x00E0: self._0XX0(),
+            0x00EE: self._0XXE(),
+            0x4000: self._4XXX(),
+            0x5000: self._5XXX(),
+            0x8FF4: self._8XX4(),
+            0x8FF5: self._8XX5(),
+            0xD000: self._DXXX(),
+            0xE001: self._EXX1(),
+            0xE00E: self._EXXE(),
+            0xF029: self._FX29(),
+            0xF033: self._FX33()
         }
 
     def draw(self):
@@ -161,7 +172,6 @@ class Cpu(pyglet.window.Window):
             # if self.sound_timer == 0:
                 # TOCAR SOM COM O PYGLET
 
-
     def on_key_press(self, symbol, modifiers):
         # log("Botão apertado: ", symbol)
         if symbol in KEY_MAP.keys():
@@ -176,6 +186,7 @@ class Cpu(pyglet.window.Window):
         if symbol in KEY_MAP.keys():
             self.key_inputs[KEY_MAP[symbol]] = 0
 
+    ##### DEFINIÇÃO DAS FUNÇÕES ####
     def _0XXX (self):
         # Extração do primeiro e ultimo nibble para não
         # confundir funções
@@ -199,7 +210,7 @@ class Cpu(pyglet.window.Window):
         if self.gpio[self.vx] != (self.opcode & 0x00FF):
             self.pc += 2
 
-    def _4XXX (self):
+    def _5XXX (self):
         # log("Pula a próxima instrução se 'Vx' for igual a 'Vy'")
         if self.gpio[self.vx] == self.gpio[self.vy]:
             self.pc += 2
@@ -223,10 +234,6 @@ class Cpu(pyglet.window.Window):
             self.gpio[0xF] = 0
         self.gpio[self.vx] -= self.gpio[self.vy]
         self.gpio[self.vx] &= 0xFF
-
-    def _FX29 (self):
-        # Desenha pixel de um personagem
-        self.index = ( 5 * (self.gpio[self.vx]) ) & 0xFFF
 
     def _DXXX (self):
         # Desenha um sprite no ponto expecificado
@@ -254,17 +261,21 @@ class Cpu(pyglet.window.Window):
                     self.gpio[0xF] = 0
         self.should_draw = True
 
+    def _EXX1(self):
+        # Pula pra próxima instrução se a tecla em Vx não está apertada
+        key = self.gpio[self.vx] & 0xF
+        if self.key_inputs[key] != 1:
+            self.pc += 2
+
     def _EXXE(self):
         # Pula pra próxima instrução se a tecla em Vx está apertada
         key = self.gpio[self.vx] & 0xF
         if self.key_inputs[key] == 1:
             self.pc += 2
 
-    def _EXX1(self):
-        # Pula pra próxima instrução se a tecla em Vx não está apertada
-        key = self.gpio[self.vx] & 0xF
-        if self.key_inputs[key] != 1:
-            self.pc += 2
+    def _FX29 (self):
+        # Desenha pixel de um personagem
+        self.index = ( 5 * (self.gpio[self.vx]) ) & 0xFFF
 
     def _FX33(self):
         # Salva um número como BCD
