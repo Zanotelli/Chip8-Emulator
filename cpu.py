@@ -4,6 +4,13 @@ import pyglet
 
 class Cpu(pyglet.window.Window):
 
+    # Pseudo pixel de 10x10
+    pixel = pyglet.resource.image('pixel.png')
+
+    # Buffer de 'pixels'
+    sprites = []
+    batch = None
+
     # Botões do input
     key_inputs = [0]*16
 
@@ -56,29 +63,6 @@ class Cpu(pyglet.window.Window):
 
     funcmap = {}
 
-    def __init__(self,
-                 width=None,
-                 height=None,
-                 caption=None,
-                 resizable=False,
-                 style=None,
-                 fullscreen=False,
-                 visible=True,
-                 vsync=True,
-                 file_drops=False,
-                 display=None,
-                 screen=None,
-                 config=None,
-                 context=None,
-                 mode=None):
-        super().__init__(width, height, caption, resizable, style, fullscreen, visible, vsync, file_drops, display,
-                         screen, config, context, mode)
-        self.vx = None
-
-        self.funcmap = {
-            0x0000: self._0XXX()
-        }
-
     def log(message):
         print(message)
 
@@ -99,9 +83,33 @@ class Cpu(pyglet.window.Window):
         # permitido para a RAM
         self.pc = 0x200
 
+        self.batch = pyglet.graphics.Batch()
+        for i in range(2048):
+            self.sprites.append(pyglet.sprite.Sprite(self.pixel, batch=self.batch))
+
         # Carrega as fontes para a memória
         for i in range(80):
             self.memory = self.fonts[i]
+
+        self.funcmap = {
+            0x0000: self._0XXX()
+        }
+
+    def draw(self):
+        if self.should_draw:
+            self.clear()
+            line_counter = 0
+            for i in range(2048):
+                if self.display_buffer[i] == 1:
+                    self.sprites[i].x = (i % 64) * 10
+                    self.sprites[i].y = 310 - ((i / 64) * 10)
+                    self.sprites[i].batch = self.batch
+                else:
+                    self.sprites[i].batch = None
+            self.clear()
+            self.batch.draw()
+            self.flip()
+            self.should_draw = False
 
     def load_rom (self, rom_path):
         # log("Carregando ", rom_path)
@@ -181,8 +189,44 @@ class Cpu(pyglet.window.Window):
         self.gpio[self.vx] -= self.gpio[self.vy]
         self.gpio[self.vx] &= 0xFF
 
-    def _FX29(self):
+    def _FX29 (self):
         # Desenha pixel de um personagem
         self.index = ( 5 * (self.gpio[self.vx]) ) & 0xFFF
+
+    def _DXXX (self):
+        # Desenha um sprite no ponto expecificado
+        self.gpio[0xF] = 0
+
+        x = self.gpio[self.vx] & 0xFF
+        y = self.gpio[self.vy] & 0xFF
+        height = self.opcode & 0x00F    # extrai os dados do ultimo nibble
+
+        for row in range(height):
+            current_row = self.memory[self.index + row]
+            pixel_offset = 0
+            while pixel_offset < 8:
+                loc = x + pixel_offset + ((y + row) * 64)
+                pixel_offset += 1
+                if ((y + row) >= 32) or ((x + pixel_offset - 1) >= 64):
+                    continue    # ignora pixels fora da tela
+                mask = 1 << (8 - pixel_offset)
+                current_pixel = (current_row & mask) >> (8 - pixel_offset)
+                # Utilizamos um XOR para atualizar apenas os pixels relevantes a cada quadro
+                self.display_buffer[loc] ^= current_pixel
+                if self.display_buffer[loc] == 0:
+                    self.gpio[0xF] = 1
+                else:
+                    self.gpio[0xF] = 0
+        self.should_draw = True
+
+
+
+
+
+
+
+
+
+
 
 
