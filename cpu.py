@@ -119,15 +119,41 @@ class Cpu(pyglet.window.Window):
             0x0000: self._0XXX(),
             0x00E0: self._0XX0(),
             0x00EE: self._0XXE(),
+            0x1000: self._1XXX(),
+            0x2000: self._2XXX(),
+            0x3000: self._3XXX(),
             0x4000: self._4XXX(),
             0x5000: self._5XXX(),
+            0x6000: self._6XXX(),
+            0x7000: self._7XXX(),
+            0x8000: self._8XXX(),
+            0x8FF0: self._8XX0(),
+            0x8FF1: self._8XX1(),
+            0x8FF2: self._8XX2(),
+            0x8FF3: self._8XX3(),
             0x8FF4: self._8XX4(),
             0x8FF5: self._8XX5(),
+            0x8FF6: self._8XX6(),
+            0x8FF7: self._8XX7(),
+            0x8FFE: self._8XXE(),
+            0x9000: self._9XXX(),
+            0xA000: self._AXXX(),
+            0xB000: self._BXXX(),
+            0xC000: self._CXXX(),
             0xD000: self._DXXX(),
+            0xE000: self._EXXX(),
             0xE001: self._EXX1(),
             0xE00E: self._EXXE(),
+            0xF000: self._FXXX(),
+            0xF007: self._FX07(),
+            0xF00A: self._FX0A(),
+            0xF015: self._FX15(),
+            0xF018: self._FX18(),
+            0xF01E: self._FX1E(),
             0xF029: self._FX29(),
-            0xF033: self._FX33()
+            0xF033: self._FX33(),
+            0xF055: self._FX55(),
+            0xF065: self._FX65()
         }
 
     def draw(self):
@@ -316,7 +342,7 @@ class Cpu(pyglet.window.Window):
         self.gpio[self.vx] = self.gpio[self.vx] << 1
         self.gpio[self.vx] &= 0xFF
 
-    def _9XX0(self):
+    def _9XXX(self):
         # Pula a próxia instrução se Vx != Vy
         if self.gpio[self.vx] != self.gpio[self.vy]:
             self.pc += 2
