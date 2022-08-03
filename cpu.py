@@ -173,6 +173,12 @@ class Cpu(pyglet.window.Window):
             # if self.sound_timer == 0:
                 # TOCAR SOM COM O PYGLET
 
+    def get_key(self):
+        for i in range(16):
+            if self.key_inputs[i] == 1:
+                return i
+        return -1
+
     def on_key_press(self, symbol, modifiers):
         # log("Botão apertado: ", symbol)
         if symbol in KEY_MAP.keys():
@@ -379,17 +385,45 @@ class Cpu(pyglet.window.Window):
 
     def _FXXX(self):
         # Identifica a função
-        extracted_opcode = self.opcode & 0xF00F
+        extracted_opcode = self.opcode & 0xF0FF
         try:
             self.funcmap[extracted_opcode]()
         except:
             print("Função desconhecida: ", self.opcode)
 
+    def _FX07(self):
+        # Vx = tempo de delay do temporizador
+        self.gpio[self.vx] = self.delay_timer
 
+    def _FX0A(self):
+        # Espera uma tecla ser apertada e guarde seu valor em Vx.
+        # Todas as execuções são paradas até a tecla ser apertada
+        key = self.get_key()
+        if key >= 0:
+            self.gpio[self.vx] = key
+        else:
+            self.pc -= 2    # Repete a função
+
+    def _FX15(self):
+        # tempo de delay do temporizador = Vx
+        self.delay_timer = self.gpio[self.vx]
+
+    def _FX18(self):
+        # temporizaodr de som = Vx
+        self.sound_timer = self.gpio[self.vx]
+
+    def _FX1E(self):
+        # Iguala o valor de 'I' à 'i + Vx'
+        self.index += self.gpio[self.vx]
+        if self.index > 0xFFF:
+            self.gpio[0xF] = 1
+            self.index &= 0xFFF
+        else:
+            self.gpio[0xF] = 0
 
     def _FX29 (self):
         # Desenha pixel de um personagem
-        self.index = ( 5 * (self.gpio[self.vx]) ) & 0xFFF
+        self.index = (5 * (self.gpio[self.vx])) & 0xFFF
 
     def _FX33(self):
         # Salva um número como BCD
@@ -397,4 +431,19 @@ class Cpu(pyglet.window.Window):
         self.memory[self.index + 1] = int((self.gpio[self.vx] % 100) / 10)
         self.memory[self.index + 2] = self.gpio[self.vx] % 10
 
+    def _FX55(self):
+        # Copia os valores de 'V0' à 'Vx' para a memória,
+        # começando por I
+        for i in range(self.vx):
+            self.memory[self.index + i] = self.gpio[i]
+        self.index += (self.vx + 1)
 
+
+    #
+    #   TODO: verificar essa função
+    #
+    def _FX65(self):
+        # Copia dados da memória, começando por I, para
+        # dento dos registradores 'V0' até 'Vx'
+        for i in range(self.vx):
+            self.memory[self.index + i] = self.gpio[i]
