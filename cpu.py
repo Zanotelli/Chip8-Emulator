@@ -266,5 +266,10 @@ class Cpu(pyglet.window.Window):
         if self.key_inputs[key] != 1:
             self.pc += 2
 
+    def _FX33(self):
+        # Salva um número como BCD
+        self.memory[self.index] = int(self.gpio[self.vx] / 100)
+        self.memory[self.index + 1] = int((self.gpio[self.vx] % 100) / 10)
+        self.memory[self.index + 2] = self.gpio[self.vx] % 10
 
 
