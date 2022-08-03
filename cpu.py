@@ -1,3 +1,4 @@
+import random
 import sys
 import pyglet
 
@@ -286,6 +287,49 @@ class Cpu(pyglet.window.Window):
         self.gpio[self.vx] -= self.gpio[self.vy]
         self.gpio[self.vx] &= 0xFF
 
+    def _8XX6 (self):
+        # Move Vx um bit para direita. Vf recebe o valro do bit
+        # menos significativo de Vx antes da movimentação
+        self.gpio[0xF] = self.gpio[self.vx] & 0x0001
+        self.gpio[self.vx] = self.gpio[self.vx] >> 1
+
+    def _8XX7 (self):
+        # Subtrai Vx a Vy. Vf é settado para 1 quando há overflow,
+        # e 0 quando não há
+        if self.gpio[self.vy] < self.gpio[self.vx]:
+            self.gpio[0xF] = 0
+        else:
+            self.gpio[0xF] = 1
+        self.gpio[self.vx] = self.gpio[self.vy] - self.gpio[self.vx]
+        self.gpio[self.vx] &= 0xFF
+
+    def _8XXE(self):
+        # Move Vx um bit para esquerda. Vf recebe o valro do bit
+        # mais significativo de Vx antes da movimentação
+        self.gpio[0xF] = (self.gpio[self.vx] & 0x00F0) >> 7
+        self.gpio[self.vx] = self.gpio[self.vx] << 1
+        self.gpio[self.vx] &= 0xFF
+
+    def _9XX0(self):
+        # Pula a próxia instrução se Vx != Vy
+        if self.gpio[self.vx] != self.gpio[self.vy]:
+            self.pc += 2
+
+    def _AXXX(self):
+        # Iguala o valor do registrador 'I' à 'NNN'
+        self.index = self.opcode & 0x0FFF
+
+    def _BXXX(self):
+        # Move o PC para um locar 'NNN + V0'
+        self.pc = (self.opcode & 0x0FFF) + self.gpio[0]
+
+    def _CXXX(self):
+        # Gera um valor aleatório de 0 a 255 que é ANDado com 'KK'
+        # e tem seu resultado salvo em 'Vx'
+        r_value = int(random.random() * 0xFF)
+        self.gpio[self.vx] = r_value & (self.opcode & 0x00FF)
+        self.gpio[self.vx] &= 0xFF
+
     def _DXXX (self):
         # Desenha um sprite no ponto expecificado
         self.gpio[0xF] = 0
@@ -312,6 +356,14 @@ class Cpu(pyglet.window.Window):
                     self.gpio[0xF] = 0
         self.should_draw = True
 
+    def _EXXX(self):
+        # Identifica a função
+        extracted_opcode = self.opcode & 0xF00F
+        try:
+            self.funcmap[extracted_opcode]()
+        except:
+            print("Função desconhecida: ", self.opcode)
+
     def _EXX1(self):
         # Pula pra próxima instrução se a tecla em Vx não está apertada
         key = self.gpio[self.vx] & 0xF
@@ -323,6 +375,17 @@ class Cpu(pyglet.window.Window):
         key = self.gpio[self.vx] & 0xF
         if self.key_inputs[key] == 1:
             self.pc += 2
+
+
+    def _FXXX(self):
+        # Identifica a função
+        extracted_opcode = self.opcode & 0xF00F
+        try:
+            self.funcmap[extracted_opcode]()
+        except:
+            print("Função desconhecida: ", self.opcode)
+
+
 
     def _FX29 (self):
         # Desenha pixel de um personagem
