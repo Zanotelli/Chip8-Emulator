@@ -1,4 +1,5 @@
 import sys
+import pyglet
 
 
 class Cpu(pyglet.window.Window):
@@ -28,6 +29,8 @@ class Cpu(pyglet.window.Window):
     # Pilha de ponteiros
     stack = []
 
+    opcode = 0
+
     # Controlador de atualização de tela
     should_draw = False
 
@@ -51,6 +54,34 @@ class Cpu(pyglet.window.Window):
         0xF0, 0x80, 0xF0, 0x80, 0x80,  # F
     ]
 
+    funcmap = {}
+
+    def __init__(self,
+                 width=None,
+                 height=None,
+                 caption=None,
+                 resizable=False,
+                 style=None,
+                 fullscreen=False,
+                 visible=True,
+                 vsync=True,
+                 file_drops=False,
+                 display=None,
+                 screen=None,
+                 config=None,
+                 context=None,
+                 mode=None):
+        super().__init__(width, height, caption, resizable, style, fullscreen, visible, vsync, file_drops, display,
+                         screen, config, context, mode)
+        self.vx = None
+
+        self.funcmap = {
+            0x0000: self._0XXX()
+        }
+
+    def log(message):
+        print(message)
+
     def initialize(self):
         self.clear()
         self.memory = [0] * 4096
@@ -68,6 +99,90 @@ class Cpu(pyglet.window.Window):
         # permitido para a RAM
         self.pc = 0x200
 
+        # Carrega as fontes para a memória
         for i in range(80):
             self.memory = self.fonts[i]
+
+    def load_rom (self, rom_path):
+        # log("Carregando ", rom_path)
+        binary_data = open(rom_path, "rb").read()
+
+        # Carrega os dados da ROM na memória
+        for i in range(len(binary_data)):
+            self.memory[i + 0x200] = ord(binary_data[i])
+
+    def cycle(self):
+        self.opcode = self.memory[self.pc]
+
+        self.vx = (self.opcode & 0x0F00) >> 8
+        self.vy = (self.opcode & 0x00F0) >> 4
+        self.pc += 2
+
+        extracted_opcode = self.opcode & 0xF000
+        try:
+            self.funcmap[extracted_opcode]()
+        except:
+            print("Instruções desconhecidas: ", self.opcode)
+
+        if self.delay_timer > 0:
+            self.delay_timer -= 1
+        if self.sound_timer > 0:
+            self.sound_timer -= 1
+            # if self.sound_timer == 0:
+                # TOCAR SOM COM O PYGLET
+
+
+
+    def _0XXX (self):
+        # Extração do primeiro e ultimo nibble para não
+        # confundir funções
+        extracted_opcode = self.opcode & 0xF0FF
+        try:
+            self.funcmap[extracted_opcode]()
+        except:
+            print("Instruções desconhecidas: ", self.opcode)
+
+    def _0XX0 (self):
+        # log("Limpa a tela")
+        self.display_buffer = [0] * 64 * 32
+        self.should_draw
+
+    def _0XXE (self):
+        # log("Retorna de subrotina")
+        self.pc = self.stack.pop()
+
+    def _4XXX (self):
+        # log("Pula a próxima instrução se 'Vx' não for igual a 'NN'")
+        if self.gpio[self.vx] != (self.opcode & 0x00FF):
+            self.pc += 2
+
+    def _4XXX (self):
+        # log("Pula a próxima instrução se 'Vx' for igual a 'Vy'")
+        if self.gpio[self.vx] == self.gpio[self.vy]:
+            self.pc += 2
+
+    def _8XX4 (self):
+        # Adiciona Vy a Vx. Vf é settado para 1 quando há overflow,
+        # e 0 quando não há
+        if (self.gpio[self.vx] + self.gpio[self.vy]) > 0xFF:
+            self.gpio[0xF] = 1
+        else:
+            self.gpio[0xF] = 0
+        self.gpio[self.vx] += self.gpio[self.vy]
+        self.gpio[self.vx] &= 0xFF
+
+    def _8XX5 (self):
+        # Subtrai Vy a Vx. Vf é settado para 1 quando há overflow,
+        # e 0 quando não há
+        if self.gpio[self.vy] < self.gpio[self.vx]:
+            self.gpio[0xF] = 1
+        else:
+            self.gpio[0xF] = 0
+        self.gpio[self.vx] -= self.gpio[self.vy]
+        self.gpio[self.vx] &= 0xFF
+
+    def _FX29(self):
+        # Desenha pixel de um personagem
+        self.index = ( 5 * (self.gpio[self.vx]) ) & 0xFFF
+
 
