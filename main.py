@@ -1,4 +1,4 @@
-
+import sys
 import cpu
 
 def main (self):

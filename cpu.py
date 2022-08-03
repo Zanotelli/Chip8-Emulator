@@ -205,6 +205,20 @@ class Cpu(pyglet.window.Window):
         # log("Retorna de subrotina")
         self.pc = self.stack.pop()
 
+    def _1XXX(self):
+        # Pula para posição XXX
+        self.pc = self.opcode & 0x0FFF
+
+    def _2XXX(self):
+        # Chama o endereço em XXX
+        self.stack.append(self.pc)
+        self.pc = self.opcode & 0x0FFF
+
+    def _3XXX(self):
+        # log("Pula a próxima instrução se 'Vx' for igual a 'NN'")
+        if self.gpio[self.vx] == (self.opcode & 0x00FF):
+            self.pc += 2
+
     def _4XXX (self):
         # log("Pula a próxima instrução se 'Vx' não for igual a 'NN'")
         if self.gpio[self.vx] != (self.opcode & 0x00FF):
@@ -214,6 +228,43 @@ class Cpu(pyglet.window.Window):
         # log("Pula a próxima instrução se 'Vx' for igual a 'Vy'")
         if self.gpio[self.vx] == self.gpio[self.vy]:
             self.pc += 2
+
+    def _6XXX(self):
+        # Iguala 'Vx' à 'KK'
+        self.gpio[self.vx] = self.opcode & 0x0FF
+
+    def _7XXX(self):
+        # Vx = Vx + 'KK'
+        self.gpio[self.vx] += (self.opcode & 0x0FF)
+
+    def _8XXX(self):
+        # Identifica a função
+        extracted_opcode = self.opcode & 0xF00F
+        extracted_opcode += 0xFF0
+        try:
+            self.funcmap[extracted_opcode]()
+        except:
+            print("Função desconhecida: ", self.opcode)
+
+    def _8XX0(self):
+        # Vx = Vy
+        self.gpio[self.vx] = self.gpio[self.vy]
+        self.gpio[self.vx] &= 0xFF
+
+    def _8XX1(self):
+        # Vx = Vx OR Vy
+        self.gpio[self.vx] = self.gpio[self.vx] | self.gpio[self.vy]
+        self.gpio[self.vx] &= 0xFF
+
+    def _8XX2(self):
+        # Vx = Vx AND Vy
+        self.gpio[self.vx] = self.gpio[self.vx] & self.gpio[self.vy]
+        self.gpio[self.vx] &= 0xFF
+
+    def _8XX3(self):
+        # Vx = Vx XOR Vy
+        self.gpio[self.vx] = self.gpio[self.vx] ^ self.gpio[self.vy]
+        self.gpio[self.vx] &= 0xFF
 
     def _8XX4 (self):
         # Adiciona Vy a Vx. Vf é settado para 1 quando há overflow,
