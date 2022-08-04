@@ -13,7 +13,6 @@ The tutorial used as base to develop this project was
 and the documentation used about the `Chip8` language was the one available
 [here](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#font).
 
----
 ## How to run it
 
 Inside the project, we have a `games` directory, where a couple of
@@ -27,5 +26,4 @@ You will notice that a new window will be opened, with a list of
 all games in the `games` folder. Select the game you want to play
 and have fun !!
 
----
 ## Future developments

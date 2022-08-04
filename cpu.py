@@ -38,7 +38,7 @@ class Cpu(pyglet.window.Window):
     display_buffer = [0] * 32 * 64
 
     # Memória
-    memory = [0] * 4096  # max 4096
+    memory = bytearray(4096)  # max 4096
 
     # Cache de memória
     gpio = [0]*16 # 16 zeroes
@@ -171,6 +171,7 @@ class Cpu(pyglet.window.Window):
             self.flip()
             self.should_draw = False
 
+    # Carrega os dados da ROM na memória
     def load_rom (self, rom_path):
         binary_data = open(rom_path, 'rb').read()
         # Carrega os dados da ROM na memória
